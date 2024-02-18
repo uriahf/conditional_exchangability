@@ -1,8 +1,11 @@
 ---
-title: "Conditional Exchangability"
-author: "Uriah Finkel"
 format: revealjs
+preload-iframes: true
 ---
+
+# Conditional Exchangeability {background-iframe="emojis/index.html"}
+
+Uriah Finkel
 
 ## Causal Question {.smaller}
 
