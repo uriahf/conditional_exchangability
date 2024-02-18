@@ -1,4 +1,4 @@
 - source: conditional_exchangeability.qmd
   netlify:
     - id: df6f0e55-77cb-47b6-9046-fd46e676a38c
-      url: 'https://lambent-figolla-ecb5a5.netlify.app'
+      url: 'https://conditional-exchangeability.netlify.app'
