@@ -1,0 +1,991 @@
+---
+title: "Conditional Exchangability"
+author: "Uriah Finkel"
+format: revealjs
+---
+
+## Causal Question {.smaller}
+
+```{r}
+#| echo: false
+
+library(reactable)
+library(dplyr)
+```
+
+::: columns
+::: {.column width="50%"}
+What is the **A**verage **Treatment** **E**ffect of Smoking 🚬 (vs not smoking 🚭) for Lung Cancer 🦀?
+
+Need for confounder adjustment:
+
+1.  Parent that smokes 😤 (unlike non-smoker parent 😐) increases the probability of a child that smokes 🚬.
+
+2.  Parent that smokes 😤 increases the probability of a lung cancer for a child through passive smoking.
+:::
+
+::: {.column width="50%"}
+![](dag_lecture.svg)
+:::
+:::
+
+##  {.smaller}
+
+::: columns
+::: {.column width="35%"}
+```{r}
+countefactual_data <- tibble::tribble(
+   ~"X", ~"A", ~"Y_a0", ~"Y_a1",
+   "0", "1", "0", "1",
+   "0", "1", "0", "0",
+   "0", "0", "1", "1",
+   "0", "0", "0", "1",
+   "0", "0", "0", "0",
+   "0", "0", "0", "0",
+   "1", "1", "1", "1",
+   "1", "1", "1", "1",
+   "1", "1", "1", "1",
+   "1", "1", "1", "1",
+   "1", "1", "1", "1",
+   "1", "1", "0", "1",
+   "1", "1", "0", "0",
+   "1", "1", "0", "0",
+   "1", "0", "1", "1",
+   "1", "0", "0", "1"
+  ) |> 
+  mutate(
+    observed_y = case_when(
+      A == "0" ~ Y_a0,
+      A == "1" ~ Y_a1
+    ),
+    ITE = as.numeric(Y_a1) - as.numeric(Y_a0)
+  ) |> 
+  arrange(
+    A, observed_y, X
+  )
+
+  
+
+countefactual_data_reactable_raw <- countefactual_data |> 
+  reactable(
+  sortable = FALSE,
+  defaultPageSize = 19,
+  columns = list(
+    observed_y = colDef(
+      show = FALSE
+    ),
+    ITE = colDef(
+      show = FALSE
+    ),
+    Y_a0 = colDef(
+      name = "Y<sup>0",
+      html = TRUE
+    ),
+    Y_a1 = colDef(
+      name = "Y<sup>1",
+      html = TRUE
+    )
+  ),
+  defaultColDef = colDef(maxWidth = 40),
+  style = list(fontSize = "1rem"))
+
+
+countefactual_data_reactable_raw
+```
+:::
+
+::: {.column width="65%"}
+#### 😇 God-Given Counterfactual Data
+
+-   By God-Given knowledge we have access to the true counterfactual outcomes for each individual for smoking 🚬 and for not smoking 🚭
+:::
+:::
+
+##  {.smaller}
+
+::: columns
+::: {.column width="35%"}
+```{r}
+
+
+countefactual_data_reactable_raw_with_ITE <- countefactual_data |> 
+  reactable(
+  sortable = FALSE,
+  defaultPageSize = 19,
+  columns = list(
+    observed_y = colDef(
+      show = FALSE
+    ),
+    Y_a0 = colDef(
+      name = "Y<sup>0",
+      html = TRUE
+    ),
+    Y_a1 = colDef(
+      name = "Y<sup>1",
+      html = TRUE
+    ),
+    ITE = colDef(
+      style = function(value) {
+      if(value == "1")
+      list(background = "pink")
+    }
+    )
+  ),
+  defaultColDef = colDef(maxWidth = 40),
+  style = list(fontSize = "1rem"))
+
+countefactual_data_reactable_raw_with_ITE
+```
+:::
+
+::: {.column width="65%"}
+#### 😇 God-Given Counterfactual Data
+
+-   By God-Given knowledge we have access to the true counterfactual outcomes for each individual for smoking 🚬 and for not smoking 🚭
+
+-   We can also calculate the Causal Individual Treatment Effect and the true Causal Average Treatment Effect:
+
+$\text{Causal ATE} = \frac{11}{16} - \frac{7}{16} = \frac{4}{16} = 0.25$
+:::
+:::
+
+##  {.smaller}
+
+::: columns
+::: {.column width="35%"}
+```{r}
+
+
+countefactual_data_reactable_raw_with_observed_outcome <- countefactual_data |> 
+  reactable(
+  sortable = FALSE,
+  defaultPageSize = 19,
+  columns = list(
+    observed_y = colDef(
+      name = "Y"
+    ),
+    Y_a0 = colDef(
+      name = "Y<sup>0",
+      html = TRUE
+    ),
+    Y_a1 = colDef(
+      name = "Y<sup>1",
+      html = TRUE
+    ),
+    ITE = colDef(
+      show = FALSE
+    )
+  ),
+  defaultColDef = colDef(maxWidth = 40),
+  style = list(fontSize = "1rem"))
+
+countefactual_data_reactable_raw_with_observed_outcome
+```
+:::
+
+::: {.column width="65%"}
+#### 😇 God-Given Counterfactual Data
+
+-   By God-Given knowledge we have access to the true counterfactual outcomes for each individual for smoking 🚬 and for not smoking 🚭
+
+-   We can also calculate the Causal Individual Treatment Effect and the true Causal Average Treatment Effect:
+
+$\text{Causal ATE} = \frac{11}{16} - \frac{7}{16} = \frac{4}{16} = 0.25$
+
+-   The observed outcome is the suitable counterfactual outcome to the given treatment.
+:::
+:::
+
+##  {.smaller}
+
+::: columns
+::: {.column width="35%"}
+```{r}
+
+
+real_data_reactable_raw <- countefactual_data |> 
+  reactable(
+  sortable = FALSE,
+  defaultPageSize = 19,
+  columns = list(
+    observed_y = colDef(
+      name = "Y",
+      style = function(value) {
+      if(value == "1")
+      list(background = "pink")
+    }
+    ),
+    A = colDef(
+      style = function(value) {
+      if (value == "1")
+      list(background = "#F2F3AE")
+      } 
+    ),
+    Y_a0 = colDef(
+      show = FALSE
+    ),
+    Y_a1 = colDef(
+      show = FALSE
+    ),
+    ITE = colDef(
+      show = FALSE
+    )
+  ),
+  defaultColDef = colDef(maxWidth = 40),
+  style = list(fontSize = "1rem"))
+
+real_data_reactable_raw
+```
+:::
+
+::: {.column width="65%"}
+#### 😈 Observed Data
+
+-   By God-Given knowledge we have access to the true counterfactual outcomes for each individual for smoking 🚬 and for not smoking 🚭
+
+-   We can also calculate the Causal Individual Treatment Effect and the true Causal Average Treatment Effect:
+
+$\text{Causal ATE} = \frac{11}{16} - \frac{7}{16} = \frac{4}{16} = 0.25$
+
+-   The observed outcome is the suitable counterfactual outcome to the given treatment.
+
+-   In real life we can analyse only the observed outcomes.
+
+The naive Associational Average Treatment Effect will be:
+
+$\text{Associational ATE} = \frac{7}{10} - \frac{2}{6} \approx 0.366$
+
+Which is obviously biased.
+:::
+:::
+
+# First Solution: IPW ⚖️
+
+##  {.smaller}
+
+::: columns
+::: {.column width="35%"}
+```{r}
+
+
+real_data_no_outcome <- countefactual_data |> 
+  reactable(
+  sortable = FALSE,
+  defaultPageSize = 19,
+  columns = list(
+    observed_y = colDef(
+      name = "Y",
+      show = FALSE
+    ),
+    Y_a0 = colDef(
+      show = FALSE
+    ),
+    Y_a1 = colDef(
+      show = FALSE
+    ),
+    ITE = colDef(
+      show = FALSE
+    )
+  ),
+  defaultColDef = colDef(maxWidth = 40),
+  style = list(fontSize = "1rem"))
+
+real_data_no_outcome
+```
+:::
+
+::: {.column width="65%"}
+#### IPW ⚖️
+
+-   IPW is a method for manipulating the sample while creating pseudo-population. Therefore, we don't need the outcome for the first step.
+:::
+:::
+
+##  {.smaller}
+
+::: columns
+::: {.column width="35%"}
+```{r}
+
+
+real_data_no_outcome <- countefactual_data |> 
+  reactable(
+  sortable = FALSE,
+  defaultPageSize = 19,
+  columns = list(
+    observed_y = colDef(
+      name = "Y",
+      show = FALSE
+    ),
+    Y_a0 = colDef(
+      show = FALSE
+    ),
+    Y_a1 = colDef(
+      show = FALSE
+    ),
+    ITE = colDef(
+      show = FALSE
+    )
+  ),
+  defaultColDef = colDef(maxWidth = 40),
+  style = list(fontSize = "1rem"))
+
+real_data_no_outcome
+```
+:::
+
+::: {.column width="65%"}
+#### IPW ⚖️
+
+-   IPW is a method for manipulating the sample while creating pseudo-population. Therefore, we don't need the outcome for the first step.
+
+-   But we do need to estimate the probability of having a treatment for each individual given the confounders.
+
+$p(A|X)$
+
+On the non-parametric case it's just the proportions of the treated patients from the subpopulation $X=x$
+:::
+:::
+
+##  {.smaller}
+
+::: columns
+::: {.column width="35%"}
+```{r}
+
+
+real_data_no_outcome_a0_x0 <- countefactual_data |> 
+  select(X, A) |> 
+  reactable(
+  sortable = FALSE,
+  defaultPageSize = 19,
+  defaultColDef = colDef(maxWidth = 40),
+  rowStyle = function(index) {
+    if (
+      (countefactual_data[index, "X"] == "0") &&
+      (countefactual_data[index, "A"] == "0")) list(background = "rgba(0, 0, 0, 0.15)") else if (
+        (countefactual_data[index, "X"] == "0") &&
+      (countefactual_data[index, "A"] == "1")
+      ) list(background = "rgba(0, 0, 0, 0.05)")
+  },
+  style = list(fontSize = "1rem"), 
+  fullWidth = FALSE)
+
+real_data_no_outcome_a0_x0
+```
+:::
+
+::: {.column width="65%"}
+#### IPW ⚖️
+
+-   IPW is a method for manipulating the sample while creating pseudo-population. Therefore, we don't need the outcome for the first step.
+
+-   But we do need to estimate the probability of having a treatment for each individual given the confounders.
+
+$p(A = 0|X = 0) = \frac{4}{6}$
+:::
+:::
+
+##  {.smaller}
+
+::: columns
+::: {.column width="35%"}
+```{r}
+
+
+real_data_no_outcome_a0_x0 <- countefactual_data |> 
+  select(X, A) |> 
+  reactable(
+  sortable = FALSE,
+  defaultPageSize = 19,
+  defaultColDef = colDef(maxWidth = 40),
+  rowStyle = function(index) {
+    if (
+      (countefactual_data[index, "X"] == "0") &&
+      (countefactual_data[index, "A"] == "1")) list(background = "rgba(0, 0, 0, 0.15)") else if (
+        (countefactual_data[index, "X"] == "0") &&
+      (countefactual_data[index, "A"] == "0")
+      ) list(background = "rgba(0, 0, 0, 0.05)")
+  },
+  style = list(fontSize = "1rem"), 
+  fullWidth = FALSE)
+
+real_data_no_outcome_a0_x0
+```
+:::
+
+::: {.column width="65%"}
+#### IPW ⚖️
+
+-   IPW is a method for manipulating the sample while creating pseudo-population. Therefore, we don't need the outcome for the first step.
+
+-   But we do need to estimate the probability of having a treatment for each individual given the confounders.
+
+$p(A = 0|X = 0) = \frac{4}{6}$
+
+$p(A = 1|X = 0) = \frac{2}{6}$
+:::
+:::
+
+##  {.smaller}
+
+::: columns
+::: {.column width="35%"}
+```{r}
+
+
+real_data_no_outcome_a0_x0 <- countefactual_data |> 
+  select(X, A) |> 
+  reactable(
+  sortable = FALSE,
+  defaultPageSize = 19,
+  defaultColDef = colDef(maxWidth = 40),
+  rowStyle = function(index) {
+    if (
+      (countefactual_data[index, "X"] == "1") &&
+      (countefactual_data[index, "A"] == "0")) list(background = "rgba(0, 0, 0, 0.15)") else if (
+        (countefactual_data[index, "X"] == "1") &&
+      (countefactual_data[index, "A"] == "1")
+      ) list(background = "rgba(0, 0, 0, 0.05)")
+  },
+  style = list(fontSize = "1rem"), 
+  fullWidth = FALSE)
+
+real_data_no_outcome_a0_x0
+```
+:::
+
+::: {.column width="65%"}
+#### IPW ⚖️
+
+-   IPW is a method for manipulating the sample while creating pseudo-population. Therefore, we don't need the outcome for the first step.
+
+-   But we do need to estimate the probability of having a treatment for each individual given the confounders.
+
+$p(A = 0|X = 0) = \frac{4}{6}$
+
+$p(A = 1|X = 0) = \frac{2}{6}$
+
+$p(A = 0|X = 1) = \frac{2}{10}$
+:::
+:::
+
+##  {.smaller}
+
+::: columns
+::: {.column width="35%"}
+```{r}
+
+
+real_data_no_outcome_a0_x0 <- countefactual_data |> 
+  select(X, A) |> 
+  reactable(
+  sortable = FALSE,
+  defaultPageSize = 19,
+  defaultColDef = colDef(maxWidth = 40),
+  rowStyle = function(index) {
+    if (
+      (countefactual_data[index, "X"] == "1") &&
+      (countefactual_data[index, "A"] == "1")) list(background = "rgba(0, 0, 0, 0.15)") else if (
+        (countefactual_data[index, "X"] == "1") &&
+      (countefactual_data[index, "A"] == "0")
+      ) list(background = "rgba(0, 0, 0, 0.05)")
+  },
+  style = list(fontSize = "1rem"), 
+  fullWidth = FALSE)
+
+real_data_no_outcome_a0_x0
+```
+:::
+
+::: {.column width="65%"}
+#### IPW ⚖️
+
+-   IPW is a method for manipulating the sample while creating pseudo-population. Therefore, we don't need the outcome for the first step.
+
+-   But we do need to estimate the probability of having a treatment for each individual given the confounders.
+
+$p(A = 0|X = 0) = \frac{4}{6}$
+
+$p(A = 1|X = 0) = \frac{2}{6}$
+
+$p(A = 0|X = 1) = \frac{2}{10}$
+
+$p(A = 1|X = 1) = \frac{8}{10}$
+:::
+:::
+
+## Weights for Non-Smoking Parents 😐 {.smaller}
+
+::: columns
+::: {.column width="50%"}
+```{r}
+
+data.frame(
+  Population = c(
+    paste(
+    rep(
+    "🚭", 4
+  ), collapse = ""),
+  paste(
+    rep(
+    "🚬", 2
+  ), collapse = "")
+    ),
+  Propensity = c(
+    "4 / 6",
+    "2 / 6"
+  ),
+  IPW = c(
+    "6 / 4",
+    "6 / 2"
+  )
+  ) |>
+  reactable(
+    columns = list(
+      Population = colDef(
+        maxWidth = 160
+      ),
+      Propensity = colDef(
+        name = "P(A|L)",
+        maxWidth = 100
+      ),
+      IPW = colDef(
+        name = "W<sup>A",
+        maxWidth = 100,
+        html = TRUE
+      )
+      ),
+  columnGroups = list(
+    colGroup(name = "Original Sample", columns = c("Population", "Propensity"))
+  )
+  )
+
+```
+:::
+
+::: {.column width="50%"}
+![](imbalanced_non_smoking_parents.svg)
+:::
+:::
+
+## Weights for Non-Smoking Parents 😐 {.smaller}
+
+::: columns
+::: {.column width="50%"}
+```{r}
+
+data.frame(
+  Population = c(
+    paste(
+    rep(
+    "🚭", 6
+  ), collapse = ""),
+  paste(
+    rep(
+    "🚬", 6
+  ), collapse = "")
+    ),
+  Propensity = c(
+    "6 / 12",
+    "6 / 12"
+  )
+  ) |>
+  reactable(
+    columns = list(
+      Population = colDef(
+        maxWidth = 160
+      ),
+      Propensity = colDef(
+        name = "P(A|L)",
+        maxWidth = 100
+      )
+      ),
+  columnGroups = list(
+    colGroup(name = "Weighted Sample", columns = c("Population", "Propensity"))
+  )
+  )
+
+```
+:::
+
+::: {.column width="50%"}
+![](balanced_non_smoking_parents.svg)
+:::
+:::
+
+## Weights for Smoking Parents 😤 {.smaller}
+
+::: columns
+::: {.column width="50%"}
+```{r}
+
+data.frame(
+  Population = c(
+    paste(
+    rep(
+    "🚭", 2
+  ), collapse = ""),
+  paste(
+    rep(
+    "🚬", 8
+  ), collapse = "")
+    ),
+  Propensity = c(
+    "2 / 10",
+    "8 / 10"
+  ),
+  IPW = c(
+    "10 / 2",
+    "10 / 8"
+  )
+  ) |>
+  reactable(
+    columns = list(
+      Population = colDef(
+        maxWidth = 160
+      ),
+      Propensity = colDef(
+        name = "P(A|L)",
+        maxWidth = 100
+      ),
+      IPW = colDef(
+        name = "W<sup>A",
+        maxWidth = 100,
+        html = TRUE
+      )
+      ),
+  columnGroups = list(
+    colGroup(name = "Original Sample", columns = c("Population", "Propensity"))
+  )
+  )
+
+```
+:::
+
+::: {.column width="50%"}
+![](imbalanced_smoking_parents.svg)
+:::
+:::
+
+## Weights for Smoking Parents 😤 {.smaller}
+
+::: columns
+::: {.column width="50%"}
+```{r}
+
+data.frame(
+  Population = c(
+    paste(
+    rep(
+    "🚭", 10
+  ), collapse = ""),
+  paste(
+    rep(
+    "🚬", 10
+  ), collapse = "")
+    ),
+  Propensity = c(
+    "10 / 20",
+    "10 / 20"
+  )
+  ) |>
+  reactable(
+    columns = list(
+      Population = colDef(
+        maxWidth = 160
+      ),
+      Propensity = colDef(
+        name = "P(A|L)",
+        maxWidth = 100
+      )
+      ),
+  columnGroups = list(
+    colGroup(name = "Weighted Sample", columns = c("Population", "Propensity"))
+  )
+  )
+
+```
+:::
+
+::: {.column width="50%"}
+![](balanced_smoking_parents.svg)
+:::
+:::
+
+##  {.smaller}
+
+::: columns
+::: {.column width="35%"}
+```{r}
+
+
+real_data_with_weights <- countefactual_data |> 
+  select(X, A, observed_y) |>
+  mutate(W_a = 
+           case_when(
+             (X=="0" & A == "0") ~ 1.5,
+             (X=="0" & A == "1") ~ 3,
+             (X=="1" & A == "0") ~ 5,
+             (X=="1" & A == "1") ~1.25
+           )) |> 
+  reactable(
+  columns = list(
+    W_a = colDef(
+      name = "W<sup>a",
+      html = TRUE
+    ),
+    observed_y = colDef(
+      name = "Y"
+    )
+  ),
+  rowStyle = function(index) {
+    if (
+      (countefactual_data[index, "observed_y"] == "1") &&
+      (countefactual_data[index, "A"] == "0")) list(background = "rgba(0, 0, 0, 0.15)") else if (
+        (countefactual_data[index, "observed_y"] == "0") &&
+      (countefactual_data[index, "A"] == "0")
+      ) list(background = "rgba(0, 0, 0, 0.05)")
+  },
+  sortable = FALSE,
+  defaultPageSize = 19,
+  defaultColDef = colDef(maxWidth = 45),
+  style = list(fontSize = "1rem"), 
+  fullWidth = FALSE) 
+  
+
+real_data_with_weights
+```
+:::
+
+::: {.column width="65%"}
+#### Calculate estimate for Causal ATE ⚖️
+
+##### Non-Smokers outcome proportion (Psuedo-population)
+
+-   6.5 cases (half a person is not a problem in pseudo population) of lung out of 16.
+:::
+:::
+
+##  {.smaller}
+
+::: columns
+::: {.column width="35%"}
+```{r}
+
+
+real_data_with_weights <- countefactual_data |> 
+  select(X, A, observed_y) |>
+  mutate(W_a = 
+           case_when(
+             (X=="0" & A == "0") ~ 1.5,
+             (X=="0" & A == "1") ~ 3,
+             (X=="1" & A == "0") ~ 5,
+             (X=="1" & A == "1") ~1.25
+           )) |> 
+  reactable(
+  columns = list(
+    W_a = colDef(
+      name = "W<sup>a",
+      html = TRUE
+    ),
+    observed_y = colDef(
+      name = "Y"
+    )
+  ),
+  rowStyle = function(index) {
+    if (
+      (countefactual_data[index, "observed_y"] == "1") &&
+      (countefactual_data[index, "A"] == "1")) list(background = "rgba(0, 0, 0, 0.15)") else if (
+        (countefactual_data[index, "observed_y"] == "0") &&
+      (countefactual_data[index, "A"] == "1")
+      ) list(background = "rgba(0, 0, 0, 0.05)")
+  },
+  sortable = FALSE,
+  defaultPageSize = 19,
+  defaultColDef = colDef(maxWidth = 45),
+  style = list(fontSize = "1rem"), 
+  fullWidth = FALSE) 
+  
+
+real_data_with_weights
+```
+:::
+
+::: {.column width="65%"}
+#### Calculate estimate for Causal ATE ⚖️
+
+##### Non-Smokers outcome proportion (Psuedo-population)
+
+-   6.5 cases (half a person is not a problem in pseudo population) of lung out of 16.
+
+##### Smokers Outcome Proporiton (Psuedo-population)
+
+-   10.5 cases out of 16.
+:::
+:::
+
+##  {.smaller}
+
+::: columns
+::: {.column width="35%"}
+```{r}
+
+
+real_data_with_weights <- countefactual_data |> 
+  select(X, A, observed_y) |>
+  mutate(W_a = 
+           case_when(
+             (X=="0" & A == "0") ~ 1.5,
+             (X=="0" & A == "1") ~ 3,
+             (X=="1" & A == "0") ~ 5,
+             (X=="1" & A == "1") ~1.25
+           )) |> 
+  reactable(
+  columns = list(
+    W_a = colDef(
+      name = "W<sup>a",
+      html = TRUE
+    ),
+    observed_y = colDef(
+      name = "Y"
+    )
+  ),
+  sortable = FALSE,
+  defaultPageSize = 19,
+  defaultColDef = colDef(maxWidth = 45),
+  style = list(fontSize = "1rem"), 
+  fullWidth = FALSE) 
+  
+
+real_data_with_weights
+```
+:::
+
+::: {.column width="65%"}
+#### Calculate estimate for Causal ATE ⚖️
+
+##### Non-Smokers outcome proportion (Psuedo-population)
+
+-   6.5 cases (half a person is not a problem in pseudo population) of lung out of 16.
+
+##### Smokers Outcome Proporiton (Psuedo-population)
+
+-   10.5 cases out of 16.
+
+##### Estimate of Causal Average Treatment Effect
+
+$\hat{ATE} = \frac{10.5}{16} - \frac{6.5}{16} = 0.25$
+:::
+:::
+
+# Second Solution: Standardization 🗃
+
+##  {.smaller}
+
+::: columns
+::: {.column width="35%"}
+```{r}
+
+
+real_data_reactable_raw
+```
+:::
+
+::: {.column width="65%"}
+#### Standardization 🗃
+
+-   The marginal counterfactual risk $Pr[Y^{a=1}]$ is the weighted average of the stratum-specific risks $Pr[Y^{a=1}|X =0]$ and $Pr[Y^{a=1}|X =1]$, in other words:
+
+$Pr[Y^{a=1}] = \sum_{X=x}Pr[Y^{a=1}|X =x]*Pr(X=x)$
+
+-   Under conditional exchangeability:
+
+$\hat{Pr[Y^{a=1}]} = \sum_{X=x}Pr[Y=1|X =x, A=1]*Pr(X=x)$
+
+-   Therefore we can estimate directly the estimate for the average treatment effect if we will use estimates for every stratum of the confounders (X) and the Treatment (A).
+
+-   The same goes for:
+
+$\hat{Pr[Y^{a=0}]} = \sum_{X=x}Pr[Y=1|X =x, A=0]*Pr(X=x)$
+:::
+:::
+
+##  {.smaller}
+
+::: columns
+::: {.column width="35%"}
+```{r}
+
+
+countefactual_data |> 
+  arrange(X) |> 
+  reactable(
+  sortable = FALSE,
+  defaultPageSize = 19,
+  columns = list(
+    observed_y = colDef(
+      name = "Y",
+      style = function(value) {
+      if(value == "1")
+      list(background = "pink")
+    }
+    ),
+    A = colDef(
+      style = function(value) {
+      if (value == "1")
+      list(background = "#F2F3AE")
+      } 
+    ),
+    X = colDef(
+      style = function(value) {
+      if (value == "1")
+      list(background = "lightblue")
+      } 
+    ),
+    Y_a0 = colDef(
+      show = FALSE
+    ),
+    Y_a1 = colDef(
+      show = FALSE
+    ),
+    ITE = colDef(
+      show = FALSE
+    )
+  ),
+  defaultColDef = colDef(maxWidth = 40),
+  style = list(fontSize = "1rem"))
+
+```
+:::
+
+::: {.column width="65%"}
+#### Standardization 🗃
+
+$\hat{Pr[Y^{a=1}]} = \frac{1}{2}*\frac{6}{16} + \frac{6}{8}*\frac{10}{16} = 0.625$
+
+$\hat{Pr[Y^{a=0}]} = \frac{1}{4}*\frac{6}{16} + \frac{1}{2}*\frac{10}{16} = 0.425$
+
+##### Estimate of Causal Average Treatment Effect
+
+$\hat{ATE} = \frac{10.5}{16} - \frac{6.5}{16} = 0.25$
+:::
+:::
+
+## Parametric Versions
+
+-   Parametric versions of IPW and Standardization will yield different estimates unlike the Non-Parametric Versions.
+
+-   For IPW: We can use ML for propensity! 🤖
+
+-   For Standardization: We can use ML 🤖 (T/S/X Learners) or old-school outcome regressions 👴 (just don't use colliders).
+
+## Benefits
+
+-   **IPW**: Model for the treatment without overfitting the for the outcome.
+
+-   **Standardization**: CATE / ITE.
+
+-   **Doubly Robust**: Estimates are consistent even if we are wrong about treatment model or outcome model.
+
+[Check out our paper!](https://pubmed.ncbi.nlm.nih.gov/35598055/)
